@@ -41,7 +41,7 @@
 
       d3.csv(csvFilePath)
         .then(function (data) {
-          data = data.filter((d) => d.music_time_slot !== "Afternoon");
+          // data = data.filter((d) => d.music_time_slot !== "Afternoon");
 
           const aggregatedData = d3.rollup(
             data,
@@ -199,8 +199,8 @@
             .attr(
               "transform",
               (d, i) =>
-                `translate(${(i % 8) * 140}, ${
-                  height + 80 + Math.floor(i / 8) * 60
+                `translate(${(i % 9) * 135}, ${
+                  height + 80 + Math.floor(i / 9) * 60
                 })`
             );
 
