@@ -41,10 +41,8 @@
 
       d3.csv(csvFilePath)
         .then(function (data) {
-          // Filter out afternoon listeners
           data = data.filter((d) => d.music_time_slot !== "Afternoon");
 
-          // Aggregate data to get the count of users per (genre, mood)
           const aggregatedData = d3.rollup(
             data,
             (v) => v.length,
@@ -59,12 +57,11 @@
             new Set(data.map((d) => d.music_Influencial_mood))
           );
 
-          // Adjust width, height, and margin for legend placement
           const containerWidth =
             document.querySelector(".chart-container").clientWidth;
-          const width = Math.min(1200, containerWidth); // Use 1200px or the container width, whichever is smaller
+          const width = Math.min(1200, containerWidth);
           const height = 600;
-          const margin = { top: 60, right: 60, bottom: 300, left: 200 }; // Increased bottom margin for legend and x-axis
+          const margin = { top: 60, right: 60, bottom: 300, left: 200 };
 
           const svg = d3
             .select("#barchart")
@@ -74,21 +71,18 @@
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
-          // Y scale for genres (grouped by mood)
           const y0Scale = d3
             .scaleBand()
             .domain(genres)
             .range([0, height])
             .padding(0.4);
 
-          // Y1 scale for moods (within each genre group)
           const y1Scale = d3
             .scaleBand()
             .domain(moods)
             .range([0, y0Scale.bandwidth()])
             .padding(0.05);
 
-          // X scale for user counts (aggregated data)
           const xScale = d3
             .scaleLog()
             .domain([
@@ -99,10 +93,8 @@
             ])
             .range([0, width]);
 
-          // Define a color scale for different moods
           const colorScale = d3.scaleOrdinal(d3.schemeCategory10).domain(moods);
 
-          // Add title
           svg
             .append("text")
             .attr("x", width / 2)
@@ -112,10 +104,8 @@
             .style("font-family", "Arial")
             .text("Music Genre vs Mood Horizontal Bar Chart");
 
-          // Add Y Axis (genres)
           svg.append("g").call(d3.axisLeft(y0Scale));
 
-          // Y axis label (music genres)
           svg
             .append("text")
             .attr("transform", "rotate(-90)")
@@ -126,22 +116,19 @@
             .style("font-family", "Arial")
             .text("Music Genres");
 
-          // Add X Axis (number of users)
           svg
             .append("g")
             .attr("transform", `translate(0,${height})`)
             .call(d3.axisBottom(xScale).ticks(5, "~s"));
 
-          // X axis label (number of users) - moved lower
           svg
             .append("text")
             .attr("x", width / 2)
-            .attr("y", height + 40) // Moved this lower for better visibility
+            .attr("y", height + 40)
             .attr("text-anchor", "middle")
             .style("font-family", "Arial")
             .text("Number of Users");
 
-          // Create bars for each mood within genres
           const genreGroups = svg
             .selectAll(".genre-group")
             .data(genres)
@@ -168,12 +155,11 @@
             .attr("height", y1Scale.bandwidth())
             .attr("fill", (d) => colorScale(d.mood));
 
-          // Function to wrap text in legend
           function wrapText(text, width) {
             text.each(function () {
               const text = d3.select(this),
                 words = text.text().split(/\s+/).reverse(),
-                lineHeight = 1.1, // ems
+                lineHeight = 1.1,
                 y = text.attr("y"),
                 dy = parseFloat(text.attr("dy")) || 0;
               let word,
@@ -204,7 +190,6 @@
             });
           }
 
-          // Add legend to the bottom, centered horizontally
           const legend = svg
             .selectAll(".legend")
             .data(moods)
@@ -234,7 +219,7 @@
             .attr("dy", "0.35em")
             .style("text-anchor", "start")
             .text((d) => d)
-            .call(wrapText, 100); // Adjust to wrap text if it’s too long
+            .call(wrapText, 100);
         })
         .catch(function (error) {
           console.error("Error loading the CSV file:", error);
