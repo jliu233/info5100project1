@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Genre vs Mood Horizontal Bar Chart</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+      .bar {
+        fill-opacity: 1;
+      }
+
+      .legend {
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+      }
+
+      .axis-label {
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+      }
+
+      .chart-container {
+        width: 100%;
+        height: auto;
+      }
+
+      svg {
+        width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chart-container">
+      <div id="barchart"></div>
+    </div>
+
+    <script>
+      const csvFilePath = "spotifyData.csv";
+
+      d3.csv(csvFilePath)
+        .then(function (data) {
+          // Filter out afternoon listeners
+          data = data.filter((d) => d.music_time_slot !== "Afternoon");
+
+          // Aggregate data to get the count of users per (genre, mood)
+          const aggregatedData = d3.rollup(
+            data,
+            (v) => v.length,
+            (d) => d.fav_music_genre,
+            (d) => d.music_Influencial_mood
+          );
+
+          const genres = Array.from(
+            new Set(data.map((d) => d.fav_music_genre))
+          );
+          const moods = Array.from(
+            new Set(data.map((d) => d.music_Influencial_mood))
+          );
+
+          // Adjust width, height, and margin for legend placement
+          const containerWidth =
+            document.querySelector(".chart-container").clientWidth;
+          const width = Math.min(1200, containerWidth); // Use 1200px or the container width, whichever is smaller
+          const height = 600;
+          const margin = { top: 60, right: 60, bottom: 300, left: 200 }; // Increased bottom margin for legend and x-axis
+
+          const svg = d3
+            .select("#barchart")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+          // Y scale for genres (grouped by mood)
+          const y0Scale = d3
+            .scaleBand()
+            .domain(genres)
+            .range([0, height])
+            .padding(0.4);
+
+          // Y1 scale for moods (within each genre group)
+          const y1Scale = d3
+            .scaleBand()
+            .domain(moods)
+            .range([0, y0Scale.bandwidth()])
+            .padding(0.05);
+
+          // X scale for user counts (aggregated data)
+          const xScale = d3
+            .scaleLog()
+            .domain([
+              1,
+              d3.max(
+                Array.from(aggregatedData.values(), (d) => d3.max(d.values()))
+              ),
+            ])
+            .range([0, width]);
+
+          // Define a color scale for different moods
+          const colorScale = d3.scaleOrdinal(d3.schemeCategory10).domain(moods);
+
+          // Add title
+          svg
+            .append("text")
+            .attr("x", width / 2)
+            .attr("y", -20)
+            .attr("text-anchor", "middle")
+            .style("font-size", "20px")
+            .style("font-family", "Arial")
+            .text("Music Genre vs Mood Horizontal Bar Chart");
+
+          // Add Y Axis (genres)
+          svg.append("g").call(d3.axisLeft(y0Scale));
+
+          // Y axis label (music genres)
+          svg
+            .append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", -margin.left + 20)
+            .attr("x", -height / 2)
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .style("font-family", "Arial")
+            .text("Music Genres");
+
+          // Add X Axis (number of users)
+          svg
+            .append("g")
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(xScale).ticks(5, "~s"));
+
+          // X axis label (number of users) - moved lower
+          svg
+            .append("text")
+            .attr("x", width / 2)
+            .attr("y", height + 40) // Moved this lower for better visibility
+            .attr("text-anchor", "middle")
+            .style("font-family", "Arial")
+            .text("Number of Users");
+
+          // Create bars for each mood within genres
+          const genreGroups = svg
+            .selectAll(".genre-group")
+            .data(genres)
+            .enter()
+            .append("g")
+            .attr("class", "genre-group")
+            .attr("transform", (d) => `translate(0,${y0Scale(d)})`);
+
+          genreGroups
+            .selectAll("rect")
+            .data((genre) =>
+              moods.map((mood) => ({
+                mood: mood,
+                count: aggregatedData.get(genre)?.get(mood) || 0,
+                genre: genre,
+              }))
+            )
+            .enter()
+            .append("rect")
+            .attr("class", "bar")
+            .attr("x", 0)
+            .attr("y", (d) => y1Scale(d.mood))
+            .attr("width", (d) => xScale(d.count))
+            .attr("height", y1Scale.bandwidth())
+            .attr("fill", (d) => colorScale(d.mood));
+
+          // Function to wrap text in legend
+          function wrapText(text, width) {
+            text.each(function () {
+              const text = d3.select(this),
+                words = text.text().split(/\s+/).reverse(),
+                lineHeight = 1.1, // ems
+                y = text.attr("y"),
+                dy = parseFloat(text.attr("dy")) || 0;
+              let word,
+                line = [],
+                lineNumber = 0,
+                tspan = text
+                  .text(null)
+                  .append("tspan")
+                  .attr("x", 24)
+                  .attr("y", y)
+                  .attr("dy", `${dy}em`);
+
+              while ((word = words.pop())) {
+                line.push(word);
+                tspan.text(line.join(" "));
+                if (tspan.node().getComputedTextLength() > width) {
+                  line.pop();
+                  tspan.text(line.join(" "));
+                  line = [word];
+                  tspan = text
+                    .append("tspan")
+                    .attr("x", 24)
+                    .attr("y", y)
+                    .attr("dy", `${++lineNumber * lineHeight + dy}em`)
+                    .text(word);
+                }
+              }
+            });
+          }
+
+          // Add legend to the bottom, centered horizontally
+          const legend = svg
+            .selectAll(".legend")
+            .data(moods)
+            .enter()
+            .append("g")
+            .attr("class", "legend")
+            .attr(
+              "transform",
+              (d, i) =>
+                `translate(${(i % 8) * 140}, ${
+                  height + 80 + Math.floor(i / 8) * 60
+                })`
+            );
+
+          legend
+            .append("rect")
+            .attr("x", 0)
+            .attr("y", 0)
+            .attr("width", 18)
+            .attr("height", 18)
+            .style("fill", colorScale);
+
+          legend
+            .append("text")
+            .attr("x", 24)
+            .attr("y", 9)
+            .attr("dy", "0.35em")
+            .style("text-anchor", "start")
+            .text((d) => d)
+            .call(wrapText, 100); // Adjust to wrap text if it’s too long
+        })
+        .catch(function (error) {
+          console.error("Error loading the CSV file:", error);
+        });
+    </script>
+  </body>
+</html>
