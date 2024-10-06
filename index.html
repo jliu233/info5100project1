@@ -41,7 +41,16 @@
 
       d3.csv(csvFilePath)
         .then(function (data) {
-          // data = data.filter((d) => d.music_time_slot !== "Afternoon");
+          const totalUsers = data.length;
+          console.log("Total number of users:", totalUsers);
+
+          d3.select("body")
+            .append("div")
+            .attr("id", "user-count")
+            .style("font-family", "Arial")
+            .style("font-size", "16px")
+            .style("margin-top", "20px")
+            .text(`Total number of users: ${totalUsers}`);
 
           const aggregatedData = d3.rollup(
             data,
