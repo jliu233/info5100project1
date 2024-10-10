@@ -1,0 +1,166 @@
+<html>
+        <h3>
+            Hermione Bossolina (hlb88)
+        </h3>
+        <head>
+            <script src="https://d3js.org/d3.v7.min.js"></script>
+            <script src="https://cdn.anychart.com/releases/8.7.1/js/anychart-core.min.js"></script>
+            <script src="https://cdn.anychart.com/releases/8.7.1/js/anychart-heatmap.min.js"></script>
+            
+            <style>
+                html, body, #container {
+                  width: 100%;
+                  height: 100%;
+                  margin: 0;
+                  padding: 0;
+                }
+              </style>
+        </head>
+        </body>
+        <svg id="heat_map" width = "800" height = "500"></svg>
+
+        <div id="container" style="width: 800px; height: 600px;"></div>
+        <script>
+              
+            d3.csv("spotifyData.csv", d3.autoType )
+                .then( (data) => {
+                    
+                data.forEach( d => {
+                    d['fav_music_genre'] = String(d['fav_music_genre']);
+                    d['music_time_slot'] = String(d['music_time_slot']);
+                    d['music_recc_rating'] = Number(d['music_recc_rating']);
+                });
+
+                // tried to do it with the normal values, but felt that the mean of the
+                // music_recc_rating was more appropriate:
+                    // https://stackoverflow.com/questions/64227680/how-to-replace-a-d3js-nest-function-with-group-and-rollup
+                    // https://observablehq.com/@d3/d3-group
+                    // https://observablehq.com/@bayre/unrolling-a-d3-rollup
+                data = d3.rollup(data, v => d3.mean(v, d => d['music_recc_rating']),
+                    d => d['fav_music_genre'],
+                    d => d['music_time_slot']);
+                
+                // grouped data into an array of objects to use for the heatmap
+                data = Array.from(data, ([fav_music_genre, timeSlotMap]) => 
+                    Array.from(timeSlotMap, ([music_time_slot, mean_rating]) => ({
+                        fav_music_genre,
+                        music_time_slot,
+                        mean_rating
+                    }))
+                ).flat();
+
+                // set the dimensions and margins of the graph
+                let svg = d3.select("svg#heat_map");
+                const margin = {top: 80, right: 45, bottom: 30, left: 100};
+                const chartWidth = 600 - margin.left - margin.right;
+                const chartHeight = 450 - margin.top - margin.bottom;
+
+                let chartArea = svg.append("g") 
+                            .attr("transform", `translate(${margin.left}, 
+                            ${margin.top})`);
+
+                // this really helped: https://d3-graph-gallery.com/graph/heatmap_style.html -- like so much...for the heatmap
+                // I did not want to save into groups and vars, but the logic below was more close to lectures, and I think it made more sense
+                // The X axis, Scale, and the Extent -> used for the color pattern
+                const musicGenreExtent = data.map(d => d['fav_music_genre']);
+                const xScale = d3.scaleBand().domain(musicGenreExtent) //figured out from the link above!
+                          .range([0, chartWidth])
+                          .padding(0.05);
+                
+                // The Y axis, Scale, and the Extent -> put in the color pattern
+                const musicTimeSlotExtent = data.map(d => d['music_time_slot']);
+                const yScale = d3.scaleBand().domain(musicTimeSlotExtent)
+                          .range([chartHeight, 0])
+                          .padding(0.05);
+                
+                const musicReccRatingExtent = d3.extent(data, d => d['mean_rating']); 
+
+                // referred to https://stackoverflow.com/questions/12925266/drawing-heatmap-with-d3
+                let myColor = d3.scaleLinear()
+                                    .domain([musicReccRatingExtent[0], (musicReccRatingExtent[0]+musicReccRatingExtent[1])/2, musicReccRatingExtent[1]])
+                                    .range(["red", "yellow", "green"]);
+
+                // let myColor = d3.scaleSequential() <- another color pattern that I could use -- it was in: https://d3-graph-gallery.com/graph/heatmap_style.html
+                    // but the black didn't look good with black text (duh) and I decided to change it!
+                //                 .interpolator(d3.interpolateInferno)
+                //                 .domain(musicReccRatingExtent);
+
+                // The heatmap rectanges! Coloring them in using myColor Scale! 
+                chartArea.selectAll().data(data)
+                        .join("rect")
+                        .attr("x", d => xScale(d['fav_music_genre']))
+                        .attr("y", d => yScale(d['music_time_slot']))
+                        .attr("rx", 4)
+                        .attr("ry", 4)
+                        .attr("width", xScale.bandwidth())
+                        .attr("height", yScale.bandwidth())
+                        // I wanted to use the mean rating so I rolled it up -> got the mean and then
+                        // used that to execute the code here!
+                        .style("fill", d => myColor(d['mean_rating']))
+                        .style("stroke-width", 4)
+                        .style("stroke", "none")
+                        .style("opacity", 0.8);
+
+                // Putting text labels within the center of the rectangles
+                chartArea.selectAll().data(data)
+                    .join("text")
+                    // Centered correctly on the xScale
+                    .attr("x", d => xScale(d['fav_music_genre']) + xScale.bandwidth() / 2) 
+                    // Centered correctly on the yScale
+                    .attr("y", d => yScale(d['music_time_slot']) + yScale.bandwidth() / 2) 
+                    .attr("text-anchor", "middle")
+                    // Making sure that the text is centered
+                    .attr("dominant-baseline", "middle")
+                    // tried white, but really hard to see on the yellow 
+                    .style("fill", "black")
+                    .style("font-size", "12px")
+                    // found how to round: https://stackoverflow.com/questions/68992663/d3-round-number-from-nest-and-sum
+                    .text(d => d3.format(".2f")(d['mean_rating']));
+
+                // addding the description and title
+                chartArea.append("text")
+                        .attr("x", 0)
+                        .attr("y", -50)
+                        .attr("text-anchor", "left")
+                        .style("font-size", "22px")
+                        .text("Heatmap!");
+
+                chartArea.append("text")
+                        .attr("x", 0)
+                        .attr("y", -20)
+                        .attr("text-anchor", "left")
+                        .style("font-size", "14px")
+                        .style("fill", "grey")
+                        .style("max-width", 400)
+                        .text("A short description of the take-away message of this chart.");
+
+                // Create the X axis and append to SVG
+                chartArea.append("g")
+                        .attr("transform", `translate(0, ${chartHeight})`) // Move to bottom of chart
+                        .call(d3.axisBottom(xScale))
+                        .selectAll("text")
+                        .attr("transform", "translate(0, 20)rotate(-25)"); // translate(-10, 20)
+
+                // Add X axis label
+                chartArea.append("text")
+                    .attr("transform", `translate(${margin.left + chartWidth / 2}, ${margin.top + chartHeight + 40})`)
+                    .style("text-anchor", "middle")
+                    .text("Favorite Music Genre");
+
+                // Create the Y axis and append to SVG
+                chartArea.append("g")
+                        .call(d3.axisLeft(yScale))
+                        .selectAll("text")
+                        .attr("transform", "rotate(-25)");;
+
+                // Add Y axis label
+                // chartArea.append("text")
+                //     .attr("transform", `translate(${margin.left - 40}, ${margin.top + chartHeight / 2}) rotate(-90)`)
+                //     .style("text-anchor", "middle")
+                //     .text("Music Listening Time Slot");
+            
+            });
+
+        </script>
+</body>
+</html>
