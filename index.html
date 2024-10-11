@@ -123,7 +123,7 @@
                         .attr("y", -50)
                         .attr("text-anchor", "left")
                         .style("font-size", "22px")
-                        .text("Heatmap!");
+                        .text("Music Recommendation Ratings");
 
                 chartArea.append("text")
                         .attr("x", 0)
@@ -132,33 +132,34 @@
                         .style("font-size", "14px")
                         .style("fill", "grey")
                         .style("max-width", 400)
-                        .text("A short description of the take-away message of this chart.");
+                        .text("Comparison across genres and listening times.");
 
-                // Create the X axis and append to SVG
+                // Add X axis
                 chartArea.append("g")
-                        .attr("transform", `translate(0, ${chartHeight})`) // Move to bottom of chart
+                        .attr("transform", `translate(0, ${chartHeight})`) 
                         .call(d3.axisBottom(xScale))
                         .selectAll("text")
-                        .attr("transform", "translate(0, 20)rotate(-25)"); // translate(-10, 20)
+                        .attr("transform", "translate(0, 20)rotate(-25)"); 
 
-                // Add X axis label
+                // Add X axis label! Better see the Melody, Rap...trending song random
                 chartArea.append("text")
-                    .attr("transform", `translate(${margin.left + chartWidth / 2}, ${margin.top + chartHeight + 40})`)
-                    .style("text-anchor", "middle")
-                    .text("Favorite Music Genre");
+                        .attr("transform", `translate(${chartWidth / 2}, ${chartHeight + margin.bottom + 35})`) 
+                        .style("text-anchor", "middle")
+                        .style("font-size", "14px")
+                        .text("Favorite Music Genre");
 
-                // Create the Y axis and append to SVG
+                // Add  Y axis! Rotate to better seen Night, Morning, Afternoon
                 chartArea.append("g")
                         .call(d3.axisLeft(yScale))
                         .selectAll("text")
                         .attr("transform", "rotate(-25)");;
 
                 // Add Y axis label
-                // chartArea.append("text")
-                //     .attr("transform", `translate(${margin.left - 40}, ${margin.top + chartHeight / 2}) rotate(-90)`)
-                //     .style("text-anchor", "middle")
-                //     .text("Music Listening Time Slot");
-            
+                chartArea.append("text")
+                        .attr("transform", `translate(-60, ${chartHeight / 2}) rotate(-90)`) // Adjust the translation to move the text
+                        .style("text-anchor", "middle")
+                        .style("font-size", "14px")
+                        .text("Music Listening Time Slot");
             });
 
         </script>
