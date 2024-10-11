@@ -1,0 +1,120 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+  .bar {
+    fill: #ff5733; 
+  }
+</style>
+</head>
+
+<body>
+  <svg></svg>
+  <script>
+      // Data preprocessing (can be done server-side or client-side)
+    d3.csv("spotifyData.csv").then(function(data) {
+      // Parse the data and filter only records where users are willing to subscribe
+
+        let filteredData = data.filter(d => d.sub_willingness === 'Yes');
+
+        // Group data by usage period and calculate subscription percentage
+        let groupedData = d3.groups(filteredData, d => d.usage_period);
+
+
+        let subscriptionData = groupedData.map(group => {
+          let period = group[0];
+          let users = group[1];
+          let totalUsers = users.length;
+          let paidUsers = users.filter(d => d.subscription_plan === 'Premium (paid subscription)').length;
+          let subscriptionRate = (paidUsers / totalUsers) * 100;
+
+          return {
+            usagePeriod: period,
+            subscription_percentage: subscriptionRate
+
+          };
+        });
+
+        let usagePeriodOrder = [
+        "Less than 6 months",
+        "6 months to 1 year",
+        "1 year to 2 years",
+        "More than 2 years"
+        ];
+
+        // Create scales for the chart
+        let margin = { top: 40, right: 20, bottom: 60, left: 50 };
+        let width = 600 - margin.left - margin.right;
+        let height = 400 - margin.top - margin.bottom;
+
+        let x = d3.scaleBand()
+          .domain(usagePeriodOrder)
+          .range([0, width])
+          .padding(0.2);
+
+        let y = d3.scaleLinear()
+          .domain([0, d3.max(subscriptionData, d => d.subscription_percentage)])
+          .nice()
+          .range([height, 0]);
+
+        // Create the chart
+        let svg = d3.select("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+        // Create the bars
+        svg.selectAll(".bar")
+          .data(subscriptionData)
+          .enter()
+          .append("rect")
+          .attr("class", "bar")
+          .attr("x", d => x(d.usagePeriod))
+          .attr("y", d => y(d.subscription_percentage))
+          .attr("width", x.bandwidth())
+          .attr("height", d => height - y(d.subscription_percentage));
+
+
+        // Create the X-axis
+        svg.append("g")
+          .attr("transform", `translate(0, ${height})`)
+          .call(d3.axisBottom(x))
+          .selectAll("text")
+          .attr("font-size", "12px");
+
+        // Create the Y-axis
+        svg.append("g")
+          .call(d3.axisLeft(y));
+
+        // Add axis labels
+        svg.append("text")
+          .attr("class", "axis-label")
+          .attr("x", width / 2)
+          .attr("y", height + margin.bottom - 10)
+          .attr("text-anchor", "middle")
+          .text("Usage Period");
+
+        svg.append("text")
+          .attr("class", "axis-label")
+          .attr("x", -height / 2)
+          .attr("y", -margin.left + 15)
+          .attr("transform", "rotate(-90)")
+          .attr("text-anchor", "middle")
+          .text("Subscription Percentage (%)");
+
+        // Add chart title
+        svg.append("text")
+          .attr("class", "title")
+          .attr("x", width / 2)
+          .attr("y", -10)
+          .attr("text-anchor", "middle")
+          .text("Subscription Rates by Usage Period");
+
+      });
+
+  </script>
+
+</body>
